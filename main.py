@@ -12,6 +12,7 @@ cap = cv2.VideoCapture(0)
 fingers_left = [0, 0, 0, 0, 0]
 fingers_right = [0, 0, 0, 0, 0]
 
+
 gestos = [
     [1, 1, 1, 1, 1], #New metal
     [1, 0, 0, 0, 0], #Jóinha
@@ -27,92 +28,202 @@ pasta_gestos = ["Nu_metal", "Joinha", "Rock", "Dedo_do_meio"]
 gestos = np.array(gestos)
 linhas, colunas = gestos.shape
 
+
+
 if not cap.isOpened():
     print("Ocorreu um erro na inicialização, programa fechado!")
     exit()
-
 print("Video iniciado")
 
 #Função que atualiza dois vetores relacionados se o dedo x está levantado
 #Exemplo de retorno: [1,0,0,0,0] = jóinha
-def fingerUp():
-    ponta = 4
-    base = 1
-    for hand_landmarks, hand_handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-        for i in range(5):
-            if hand_handedness.classification[0].label == 'Right':
-                if hand_landmarks.landmark[ponta] < hand_landmarks.landmark[base]:
-                #armazena no vetor
-                    fingers_right[i] = 1
-                else:
-                    fingers_right[i] = 0
+def fingerUp(results):
+    global fingers_left , fingers_right
 
-            if hand_handedness.classification[0].label == 'Left':
-                if hand_landmarks.landmark[ponta] < hand_landmarks.landmark[base]:
-                # armazena no vetor
-                    fingers_left[i] = 1
-                else:
-                    fingers_left[i] = 0
+    if results.multi_hand_landmarks and results.multi_handedness:
+        for hand_landmarks, hand_handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+            hand_label = hand_handedness.classification[0].label  # 'Left' ou 'Right'
 
-            ponta += 3
-            base += 3
+            # Índices dos dedos (ponta, base)
+            dedos = {
+                "polegar": (4, 3),
+                "indicador": (8, 6),
+                "medio": (12, 10),
+                "anelar": (16, 14),
+                "mindinho": (20, 18)
+            }
+
+            status_dedos = []
+
+            for i, (ponta, base) in enumerate(dedos.values()):
+                if i == 0:  # polegar
+                    if hand_label == "Right":
+                        levantado = hand_landmarks.landmark[ponta].x < hand_landmarks.landmark[base].x
+                    else:  # mão esquerda é espelhada
+                        levantado = hand_landmarks.landmark[ponta].x > hand_landmarks.landmark[base].x
+                else:  # demais dedos
+                    levantado = hand_landmarks.landmark[ponta].y < hand_landmarks.landmark[base].y
+
+                status_dedos.append(1 if levantado else 0)
+
+            if hand_label == "Right":
+                fingers_right = status_dedos
+            else:
+                fingers_left = status_dedos
 
 
 #Parametros mp
 with mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2,
-    min_detection_confidence= 0.5,
-    min_tracking_confidence= 0.5) as hands:
-        
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7) as hands:
+    
+    gesto_ativo_esq = -1
+    gesto_ativo_dir = -1
+    imagem_gesto_esq = None
+    imagem_gesto_dir = None
+    alpha_esq = 0.0
+    alpha_dir = 0.0
+    cx_esq_suave, cy_esq_suave = 0, 0
+    cx_dir_suave, cy_dir_suave = 0, 0
+
     while cap.isOpened():
-        #começo da captura
         sucesso, frame = cap.read()
         if not sucesso:
             print("Falha na imagem")
             break
-        
-        #criação dos pontos
-        image = cv2.cvtColor(frame, cv2.COLOR_BGRA2RGB)
+
+        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = hands.process(image)
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        
-        #ligação dos pontos
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
+
+        # Atualiza vetores de dedos
+        if results.multi_hand_landmarks and results.multi_handedness:
+            for hand_landmarks, hand_handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
                 mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-        cv2.imshow('Detecção  de mãos', image)
+                fingerUp(results)
 
-        #Detecção de sinais
-        #Por enquanto vê apenas gestos da mão esquerda
-        fingerUp()
-        for i in range(linhas):
-            diferente = False
-            for j in range(colunas):
-                if gestos[i][j] != fingers_left[j]:
-                    diferente = True
-            if not diferente:
-                # Encontrou o gesto correspondente!
-                print(f"Gesto {i + 1} reconhecido")
+                h, w, _ = image.shape
+                label = hand_handedness.classification[0].label  # "Left" ou "Right"
+                cx = int(hand_landmarks.landmark[0].x * w)
+                cy = int(hand_landmarks.landmark[0].y * h)
 
-                # Escolher uma imagem aleatória dentro da pasta correspondente
-                pasta = os.path.join(base_path, pasta_gestos[i])
-                imagens = os.listdir(pasta)
-                imagem_escolhida = random.choice(imagens)
+                if label == 'Left':
+                    # Detecta gesto da mão esquerda
+                    gesto_detectado = -1
+                    for i in range(linhas):
+                        if np.array_equal(gestos[i], fingers_left):
+                            gesto_detectado = i
+                            break
 
-                caminho_imagem = os.path.join(pasta, imagem_escolhida)
+                    if gesto_detectado != -1:
+                        if gesto_detectado != gesto_ativo_esq:
+                            gesto_ativo_esq = gesto_detectado
+                            pasta = os.path.join(base_path, pasta_gestos[gesto_detectado])
+                            imagens = os.listdir(pasta)
+                            imagem_escolhida = random.choice(imagens)
+                            caminho_imagem = os.path.join(pasta, imagem_escolhida)
+                            img = cv2.imread(caminho_imagem)
 
-                # Abrir e exibir
-                img = cv2.imread(caminho_imagem)
-                if img is not None:
-                    cv2.imshow(f"Gesto {i + 1}", img)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
-                else:
-                    print(f"Erro ao abrir: {caminho_imagem}")
+                            if img is not None:
+                                altura, largura = img.shape[:2]
+                                fator = 300 / max(altura, largura)
+                                imagem_gesto_esq = cv2.resize(img, (int(largura * fator), int(altura * fator)))
+                                alpha_esq = 0.0
+                            else:
+                                print(f"Erro ao abrir: {caminho_imagem}")
 
-        if  cv2.waitKey(5) & 0xFF == 27:
+                        cx_esq_suave = int(0.8 * cx_esq_suave + 0.2 * cx)
+                        cy_esq_suave = int(0.8 * cy_esq_suave + 0.2 * cy)
+
+                        if alpha_esq < 1.0:
+                            alpha_esq += 0.1
+
+                        if imagem_gesto_esq is not None:
+                            ih, iw, _ = imagem_gesto_esq.shape
+                            x1, y1 = cx_esq_suave - iw // 2, cy_esq_suave - ih - 20
+                            x2, y2 = x1 + iw, y1 + ih
+                            if x1 >= 0 and y1 >= 0 and x2 <= w and y2 <= h:
+                                overlay = image.copy()
+                                overlay[y1:y2, x1:x2] = imagem_gesto_esq
+                                cv2.addWeighted(overlay, alpha_esq, image, 1 - alpha_esq, 0, image)
+                    else:
+                        if gesto_ativo_esq != -1:
+                            alpha_esq -= 0.1
+                            if alpha_esq <= 0:
+                                alpha_esq = 0
+                                gesto_ativo_esq = -1
+                                imagem_gesto_esq = None
+
+                if label == 'Right':
+                    # Detecta gesto da mão direita
+                    gesto_detectado = -1
+                    for i in range(linhas):
+                        if np.array_equal(gestos[i], fingers_right):
+                            gesto_detectado = i
+                            break
+
+                    if gesto_detectado != -1:
+                        if gesto_detectado != gesto_ativo_dir:
+                            gesto_ativo_dir = gesto_detectado
+                            pasta = os.path.join(base_path, pasta_gestos[gesto_detectado])
+                            imagens = os.listdir(pasta)
+                            imagem_escolhida = random.choice(imagens)
+                            caminho_imagem = os.path.join(pasta, imagem_escolhida)
+                            img = cv2.imread(caminho_imagem)
+
+                            if img is not None:
+                                altura, largura = img.shape[:2]
+                                fator = 300 / max(altura, largura)
+                                imagem_gesto_dir = cv2.resize(img, (int(largura * fator), int(altura * fator)))
+                                alpha_dir = 0.0
+                            else:
+                                print(f"Erro ao abrir: {caminho_imagem}")
+
+                        cx_dir_suave = int(0.8 * cx_dir_suave + 0.2 * cx)
+                        cy_dir_suave = int(0.8 * cy_dir_suave + 0.2 * cy)
+
+                        if alpha_dir < 1.0:
+                            alpha_dir += 0.1
+
+                        if imagem_gesto_dir is not None:
+                            ih, iw, _ = imagem_gesto_dir.shape
+                            x1, y1 = cx_dir_suave - iw // 2, cy_dir_suave - ih - 20
+                            x2, y2 = x1 + iw, y1 + ih
+                            if x1 >= 0 and y1 >= 0 and x2 <= w and y2 <= h:
+                                overlay = image.copy()
+                                overlay[y1:y2, x1:x2] = imagem_gesto_dir
+                                cv2.addWeighted(overlay, alpha_dir, image, 1 - alpha_dir, 0, image)
+                    else:
+                        if gesto_ativo_dir != -1:
+                            alpha_dir -= 0.1
+                            if alpha_dir <= 0:
+                                alpha_dir = 0
+                                gesto_ativo_dir = -1
+                                imagem_gesto_dir = None
+
+        else:
+            # Nenhuma mão detectada → esconde ambas
+            for lado in ["esq", "dir"]:
+                if lado == "esq" and gesto_ativo_esq != -1:
+                    alpha_esq -= 0.1
+                    if alpha_esq <= 0:
+                        alpha_esq = 0
+                        gesto_ativo_esq = -1
+                        imagem_gesto_esq = None
+                if lado == "dir" and gesto_ativo_dir != -1:
+                    alpha_dir -= 0.1
+                    if alpha_dir <= 0:
+                        alpha_dir = 0
+                        gesto_ativo_dir = -1
+                        imagem_gesto_dir = None
+
+        cv2.imshow('Detecção de mãos', image)
+
+        if cv2.waitKey(5) & 0xFF == 27:
             break
-    
+
+print("fechando...")
 cap.release()
 cv2.destroyAllWindows()
