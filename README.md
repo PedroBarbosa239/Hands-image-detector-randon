@@ -1,72 +1,77 @@
-# 🖐️ Detecção de Gestos com OpenCV e MediaPipe
+# 🖐️ Hand Gesture Detection with OpenCV and MediaPipe
 
-Projeto tem como base estudo de visão computacional ultilizando a **MediaPipe**, ele tem tom humoristico e foi desenvolvido 
-a partir de uma idéia do projeto da desenvolvedora Gabriela Marculino, onde seu [projeto](https://github.com/GabrielaMarculino/Nu-Metal-Pose-Random-Image-Detector) inspirou a confeccção do meu projeto
+This project is based on computer vision studies using **MediaPipe**.  
+It has a humorous tone and was developed from an idea inspired by the project created by **Gabriela Marculino**, whose [repository](https://github.com/GabrielaMarculino/Nu-Metal-Pose-Random-Image-Detector) served as inspiration for this work.
 
-Este projeto utiliza **OpenCV**, **MediaPipe** e **NumPy** para detectar gestos com as mãos em tempo real via webcam.  
-Cada gesto reconhecido exibe uma imagem correspondente a cada mão detectada, com efeito de transição suave (fade in/out).
-
----
-
-## 🎯 Objetivo
-
-Demonstrar o uso de visão computacional para:
-- Rastrear mãos em tempo real;
-- Identificar gestos específicos (ex: "Rock", "Joinha", "Dedo do meio", etc.);
-- Exibir imagens personalizadas de acordo com o gesto reconhecido.
+This project uses **OpenCV**, **MediaPipe**, and **NumPy** to detect hand gestures in real time via webcam.  
+Each recognized gesture displays a corresponding image for each detected hand, with a smooth transition effect (fade in/out).
 
 ---
 
-## 🧠 Tecnologias Utilizadas
+## 🎯 Objective
 
-- [OpenCV](https://opencv.org/) → Captura e manipulação de imagens/vídeo.  
-- [MediaPipe](https://developers.google.com/mediapipe) → Detecção e rastreamento das mãos.  
-- [NumPy](https://numpy.org/) → Processamento de arrays numéricos.  
+Demonstrate the use of computer vision to:
+- Track hands in real time;
+- Identify specific gestures (e.g., “Rock”, “Thumbs Up”, “Middle Finger”, etc.);
+- Display personalized images according to the recognized gesture.
+
+---
+
+## 🧠 Technologies Used
+
+- [OpenCV](https://opencv.org/) → Image and video capture/processing.  
+- [MediaPipe](https://developers.google.com/mediapipe) → Hand detection and tracking.  
+- [NumPy](https://numpy.org/) → Numerical array manipulation.  
 - [Python 3.x](https://www.python.org/)  
 
 ---
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
-> Dentro da pasta **img/** ficam as imagens correspondentes a cada gesto.  
-> O nome das subpastas deve ser exatamente igual ao especificado no código:
+> Inside the **img/** folder are the images corresponding to each gesture.  
+> The subfolder names must exactly match the ones specified in the code:  
 > `"Nu_metal"`, `"Joinha"`, `"Rock"`, `"Dedo_do_meio"`.
 
 ---
 
-## ⚙️ Instalação
+## ⚙️ Installation
 
-1. **Clone este repositório**
+1. **Clone this repository**
    ```bash
    git clone https://github.com/PedroBarbosa239/Hands-image-detector-randon.git
-   cd NOME_DO_REPOSITORIO
-2. **Crie e ative um ambiente virtual (opcional, mas recomendado)**
+   cd Hands-image-detector-randon
+   ```
+
+2. **Create and activate a virtual environment (optional but recommended)**
    ```bash
-     python -m venv venv
-    venv\Scripts\activate       # Windows
-    source venv/bin/activate    # Linux / macOS
-3. **Instale as dependências**
+   python -m venv venv
+   venv\Scripts\activate       # Windows
+   source venv/bin/activate      # Linux / macOS
+   ```
+
+3. **Install dependencies**
    ```bash
-     pip install opencv-python mediapipe numpy
-   
-## 👨‍💻 Autor
+   pip install opencv-python mediapipe numpy
+   ```
 
-Pedro Barbosa de Souza
-- 📘 Projeto desenvolvido para estudo e prática de visão computacional em Python.
-- 🔗 GitHub: Pedro Barbosa
+---
 
-## 📜 Licença
+## 👨‍💻 Author
 
-Este projeto é distribuído sob a licença MIT License.
-Você pode usar, copiar, modificar e distribuir este projeto livremente para fins educacionais e experimentais.
+**Pedro Barbosa de Souza**  
+- 📘 Project developed for studying and practicing computer vision with Python.  
+- 🔗 GitHub: [Pedro Barbosa](https://github.com/PedroBarbosa239)
 
-## 📜💡 Sugestões Futuras
-  Livres para contribuições no projeto e idéias e criticas 
+---
 
+## 📜 License
 
+This project is distributed under the **MIT License**.  
+You are free to use, copy, modify, and distribute this project for **educational and experimental** purposes.
 
+---
 
+## 💡 Suggestions and Contributions
 
-
-
-
+Contributions, ideas, and constructive feedback are always welcome!  
+Feel free to open pull requests or share improvement suggestions.
