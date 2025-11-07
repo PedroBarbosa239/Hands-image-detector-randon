@@ -67,7 +67,7 @@ def fingerUp(results):
             else:
                 fingers_left = status_dedos
 
-def detectarGestos(gesto_ativo, imagem_gesto, cx_suave, cy_suave, fingers, alpha, cx, cy, w, h):
+def detectarGestos(gesto_ativo, imagem_gesto, cx_suave, cy_suave, fingers, alpha, cx, cy, image, w, h):
     gesto_detectado = -1
 
     # Verifica se o padrão de dedos coincide com algum gesto conhecido
@@ -78,7 +78,7 @@ def detectarGestos(gesto_ativo, imagem_gesto, cx_suave, cy_suave, fingers, alpha
 
     # --- Se um gesto foi reconhecido ---
     if gesto_detectado != -1:
-        # Se for um gesto novo, carrega uma nova imagem
+        # Se for um gesto novo, carrega uma nova imagem apenas 1x
         if gesto_detectado != gesto_ativo:
             gesto_ativo = gesto_detectado
             pasta = os.path.join(base_path, pasta_gestos[gesto_detectado])
@@ -91,31 +91,38 @@ def detectarGestos(gesto_ativo, imagem_gesto, cx_suave, cy_suave, fingers, alpha
                 altura, largura = img.shape[:2]
                 fator = 150 / max(altura, largura)
                 imagem_gesto = cv2.resize(img, (int(largura * fator), int(altura * fator)))
-                alpha = 0.0  # inicia fade in
+                alpha = 1.0  # já aparece visível
             else:
                 print(f"Erro ao abrir: {caminho_imagem}")
 
         # Atualiza posição suavemente (segue a mão)
-        cx_suave = int(0.4 * cx_suave + 0.6 * cx)
-        cy_suave = int(0.4 * cy_suave + 0.6 * cy)
-
-        # Aumenta gradualmente a opacidade (fade in)
-        if alpha < 1.0:
-            alpha += 0.1
+        cx_suave = int(0.3 * cx_suave + 0.7 * cx)
+        cy_suave = int(0.3 * cy_suave + 0.7 * cy)
 
         # Desenha imagem sobre a mão
         if imagem_gesto is not None:
             ih, iw, _ = imagem_gesto.shape
-            x1, y1 = cx_suave - iw // 2, cy_suave - ih - 20
+            offset = int(0.9 * ih) 
+            x1, y1 = cx_suave - iw // 2, cy_suave - ih - offset
             x2, y2 = x1 + iw, y1 + ih
 
-            # Impede que ultrapasse os limites da tela
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(w, x2), min(h, y2)
+            # Corrige limites da tela
+            if x1 < 0:
+                x1 = 0
+            if y1 < 0:
+                y1 = 0
+            if x2 > w:
+                x2 = w
+            if y2 > h:
+                y2 = h
 
-            overlay = image.copy()
-            overlay[y1:y2, x1:x2] = imagem_gesto
-            cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+            # Recalcula tamanho da imagem para caber dentro dos limites
+            iw_corrigido, ih_corrigido = x2 - x1, y2 - y1
+            if iw_corrigido > 0 and ih_corrigido > 0:
+                imagem_redimensionada = cv2.resize(imagem_gesto, (iw_corrigido, ih_corrigido))
+                overlay = image.copy()
+                overlay[y1:y2, x1:x2] = imagem_redimensionada
+                cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
 
     else:
         # --- Nenhum gesto detectado ---
@@ -168,11 +175,13 @@ with mp_hands.Hands(
 
                 if label == 'Left':
                     gesto_ativo_esq, imagem_gesto_esq, cx_esq_suave, cy_esq_suave, alpha_esq = detectarGestos(
-                        gesto_ativo_esq, imagem_gesto_esq, cx_esq_suave, cy_esq_suave, fingers_left, alpha_esq, cx, cy, w, h)
+                        gesto_ativo_esq, imagem_gesto_esq, cx_esq_suave, cy_esq_suave,
+                        fingers_left, alpha_esq, cx, cy, image, w, h)
 
                 if label == 'Right':
                     gesto_ativo_dir, imagem_gesto_dir, cx_dir_suave, cy_dir_suave, alpha_dir = detectarGestos(
-                        gesto_ativo_dir, imagem_gesto_dir, cx_dir_suave, cy_dir_suave, fingers_right, alpha_dir, cx, cy, w, h)
+                        gesto_ativo_dir, imagem_gesto_dir, cx_dir_suave, cy_dir_suave,
+                        fingers_right, alpha_dir, cx, cy, image, w, h)
 
         else:
             # Nenhuma mão detectada = esconde ambas
